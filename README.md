@@ -15,7 +15,7 @@ A través de un esquema lógico UML, se han definido las entidades necesarias y 
 El objetivo es proporcionar un sistema eficiente que permita gestionar la información relacionada y las consultas pertinentes.
 
 ## 🤝 Diagrama entidad-relación 
-![image](https://github.com/user-attachments/assets/c33ecfe2-7845-4ff0-9866-93994c4345b5)
+![image]([https://github.com/user-attachments/assets/c33ecfe2-7845-4ff0-9866-93994c4345b5](https://github.com/JhoanDiazArdila/tienda_cosmeticos_Base_datos_Jhoan_Diaz_Alejandro_Rincon/blob/main/UML-cosmeticos.jpeg))
 
 
 
