@@ -238,3 +238,237 @@ CALL ventas_producto_total(1,NULL);
 
 SELECT * FROM venta_producto;
 SELECT * FROM producto;
+
+
+
+
+
+-- 1. Listar todos los productos de cosméticos de un tipo específico (por ejemplo, "labial").
+DELIMITER $$
+CREATE FUNCTION listar_productos(
+    p_tipo_cosmetico VARCHAR(50)
+)
+RETURNS TEXT
+READS SQL DATA
+BEGIN
+    DECLARE resultado TEXT DEFAULT '';
+    SELECT GROUP_CONCAT(p.nombre SEPARATOR ', ') INTO resultado
+    FROM producto AS p 
+    JOIN categoria c ON p.id_categoria = c.id_categoria
+    JOIN cosmetico co ON p.id_producto = co.id_producto
+    JOIN tipo_cosmetico tp ON co.id_tipo_cosmetico = tp.id_tipo_cosmetico
+    WHERE tp.nombre = p_tipo_cosmetico;
+    RETURN resultado;
+END $$
+DELIMITER ;
+
+SELECT listar_productos('labial') AS productos;
+
+
+-- 2. Obtener todos los productos en una categoría (cosméticos, cuidado de la piel, perfumes, accesorios) cuyo stock sea inferior a un valor dado.
+DELIMITER $$
+CREATE FUNCTION productos_stock_menor(
+    p_categoria VARCHAR(50),
+    p_stock INT
+)
+RETURNS TEXT
+READS SQL DATA
+BEGIN
+    DECLARE resultado TEXT DEFAULT '';
+    SELECT GROUP_CONCAT(p.nombre SEPARATOR ', ') INTO resultado
+    FROM categoria AS c
+    JOIN producto p ON c.id_categoria = p.id_categoria
+    WHERE c.nombre = p_categoria AND p.stock < p_stock;
+    RETURN resultado;
+END $$
+DELIMITER ;
+
+SELECT productos_stock_menor('cosmetico',51) AS productos;
+
+
+
+-- 3. Mostrar todas las ventas realizadas por un cliente específico en un rango de fechas.
+DELIMITER $$
+CREATE FUNCTION venta_cliente(
+    p_id_cliente INT,
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE
+)
+RETURNS TEXT
+READS SQL DATA
+BEGIN
+    DECLARE resultado TEXT DEFAULT '';
+    SELECT GROUP_CONCAT(v.id_venta SEPARATOR ', ') INTO resultado
+    FROM venta AS v
+    JOIN cliente c ON v.id_cliente = c.id_cliente
+    WHERE c.id_cliente = p_id_cliente 
+        AND v.fecha_venta BETWEEN p_fecha_inicio AND p_fecha_fin;
+    RETURN resultado;
+END$$
+DELIMITER ;
+
+SELECT venta_cliente(1,'2023-12-25','2024-01-30') AS productos;
+
+
+-- 4. Calcular el total de ventas realizadas por un empleado en un mes dado.
+DELIMITER $$
+CREATE FUNCTION total_ventas_empleado(
+    p_id_empleado INT,
+    p_mes INT,
+    p_año INT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE resultado INT DEFAULT 0;
+    SELECT COUNT(v.id_venta) INTO resultado
+    FROM venta AS v 
+    WHERE v.id_empleado = p_id_empleado
+        AND MONTH(v.fecha_venta) = p_mes
+        AND YEAR(v.fecha_venta) = p_año;
+    RETURN resultado;
+END$$
+DELIMITER ;
+
+SELECT total_ventas_empleado(2,1,2024);
+
+
+-- 5. Listar los productos más vendidos en un período determinado.
+DELIMITER $$
+CREATE FUNCTION producto_mas_vendido(
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE
+)
+RETURNS VARCHAR(50)
+READS SQL DATA
+BEGIN
+    DECLARE resultado VARCHAR(50) DEFAULT '';
+    SELECT p.nombre INTO resultado
+    FROM producto AS p
+    JOIN venta_producto vp ON p.id_producto = vp.id_producto
+    JOIN venta v ON vp.id_venta = v.id_venta
+    WHERE v.fecha_venta BETWEEN p_fecha_inicio AND p_fecha_fin
+    ORDER BY vp.cantidad DESC
+    LIMIT 1;
+    RETURN resultado;
+END$$
+DELIMITER ;
+
+SELECT producto_mas_vendido('2023-12-25','2024-01-30') AS 'producto mas vendido';
+
+
+-- 6. Consultar el stock disponible de un producto por su nombre o identificador.
+DELIMITER $$
+CREATE FUNCTION stock_disponible(
+    p_id_producto INT,
+    p_nombre_producto VARCHAR(50)
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE resultado INT DEFAULT 0;
+    IF p_id_producto IS NOT NULL THEN
+        SELECT p.stock INTO resultado
+        FROM producto AS p
+        WHERE p.id_producto = p_id_producto;
+    ELSEIF p_nombre_producto IS NOT NULL THEN
+        SELECT p.stock INTO resultado
+        FROM producto AS p
+        WHERE p.nombre = p_nombre_producto;
+    END IF;
+    RETURN resultado;
+END$$
+DELIMITER ;
+
+SELECT stock_disponible(1,NULL);
+
+
+-- 7. Mostrar las órdenes de compra realizadas a un proveedor específico en el último año.
+DELIMITER $$
+CREATE FUNCTION ordenes_proveedor(
+    p_id_proveedor INT 
+)
+RETURNS TEXT
+READS SQL DATA
+BEGIN
+    DECLARE resultado TEXT DEFAULT '';
+    SELECT GROUP_CONCAT(c.id_compra SEPARATOR ', ') INTO resultado
+    FROM compra AS c 
+    WHERE c.id_proveedor = p_id_proveedor 
+        AND c.fecha BETWEEN NOW() - INTERVAL 1 YEAR AND NOW();
+    RETURN resultado;
+END $$
+DELIMITER ;
+
+SELECT ordenes_proveedor(1);
+
+
+-- 8. Listar los empleados que han trabajado más de un año en la tienda.
+DELIMITER $$
+CREATE FUNCTION listar_antiguedad_empleado(
+)
+RETURNS TEXT
+READS SQL DATA
+BEGIN
+    DECLARE resultado TEXT DEFAULT '';
+    SELECT GROUP_CONCAT(e.nombre) INTO resultado
+    FROM empleado AS e
+    WHERE TIMESTAMPDIFF(YEAR, e.fecha_contratacion, CURDATE()) > 1;
+    RETURN resultado;
+END $$
+DELIMITER ;
+
+SELECT listar_antiguedad_empleado();
+
+
+-- 9. Obtener la cantidad total de productos vendidos en un día específico.
+DELIMITER $$
+CREATE FUNCTION cantidad_productos_vendidos(
+    p_dia DATE
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE resultado INT DEFAULT 0;
+    SELECT SUM(vp.cantidad) INTO resultado
+    FROM venta AS v
+    JOIN venta_producto vp ON v.id_venta = vp.id_venta
+    WHERE v.fecha_venta = p_dia;
+    RETURN resultado;
+END $$
+DELIMITER ;
+
+SELECT cantidad_productos_vendidos('2024-01-01');
+
+
+-- 10. Consultar las ventas de un producto específico (por nombre o ID) y cuántas unidades se vendieron.
+DELIMITER $$
+CREATE FUNCTION ventas_producto(
+    p_id_producto INT,
+    p_nombre_producto VARCHAR(50)
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE resultado INT DEFAULT 0;
+    IF p_id_producto IS NOT NULL THEN
+        SELECT SUM(vp.cantidad * p.precio) INTO resultado
+        FROM producto AS p
+        JOIN venta_producto vp ON p.id_producto = vp.id_producto
+        WHERE vp.id_producto = p_id_producto;
+    ELSEIF p_nombre_producto IS NOT NULL THEN
+        SELECT SUM(vp.cantidad * p.precio) INTO resultado
+        FROM producto AS p
+        JOIN venta_producto vp ON p.id_producto = vp.id_producto
+        WHERE p.nombre = p_nombre_producto;
+    END IF;
+    RETURN resultado;
+END $$
+DELIMITER ;
+
+
+SELECT ventas_producto(1,NULL);
+
+
+
+
